@@ -435,6 +435,7 @@ class AbsSmtSolver
 
   SolverEnum get_solver_enum() { return solver_enum; };
 
+  virtual Term eliminate_quantifiers(const Term A) const;  
  protected:
   SolverEnum solver_enum;  ///< an enum identifying the underlying solver
 };

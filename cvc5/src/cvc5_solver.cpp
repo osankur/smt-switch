@@ -1013,7 +1013,17 @@ void Cvc5Solver::dump_smt2(std::string filename) const
         "operators with more than two indices");
   }
 }
-
+Term Cvc5Solver::eliminate_quantifiers(const Term A) const {
+  try
+  {
+    std::shared_ptr<Cvc5Term> cterm = std::static_pointer_cast<Cvc5Term>(A);
+    return std::make_shared<Cvc5Term>(solver.getQuantifierElimination(cterm->term));
+  }
+  catch (::cvc5::CVC5ApiException & e)
+  {
+    throw InternalSolverException(e.what());
+  }  
+}
 /* end Cvc5Solver implementation */
 
 Result cvc5InterpolatingSolver::get_interpolant(const Term & A,

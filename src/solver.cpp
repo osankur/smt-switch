@@ -178,4 +178,8 @@ Result AbsSmtSolver::get_sequence_interpolants(const TermVec & formulae,
   }
 }
 
+Term AbsSmtSolver::eliminate_quantifiers(const Term A) const {
+  throw NotImplementedException("Quantifier elimination is not implemented for this solver");
+}
+
 }  // namespace smt
