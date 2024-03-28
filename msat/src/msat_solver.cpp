@@ -676,8 +676,16 @@ Term MsatSolver::make_term(const std::string val,
         throw NotImplementedException(
                                       "MathSAT only supports base 10 for real and integer values");
       }
-
-      msat_term mval = msat_make_number(env, val.c_str());
+      
+      int ind_of_up_start = val.find_first_of("-");
+      msat_term mval;
+      if (ind_of_up_start == val.npos){
+        mval = msat_make_number(env, val.c_str());
+      } else {
+        std::string nb = val.substr(ind_of_up_start+2,val.size()-4);
+        mval = msat_make_number(env, nb.c_str());
+        mval = msat_make_times(env, msat_make_int_number(env, -1), mval);
+      }
       if (MSAT_ERROR_TERM(mval))
       {
         throw IncorrectUsageException("");

@@ -310,6 +310,13 @@ TEST_P(BoolArrayTranslationTests, Arrays)
   ASSERT_EQ(stores, stores_1);
 }
 
+TEST(RationalSelfTests, RationalConst){
+  smt::SmtSolver news = create_solver(SolverConfiguration(smt::SolverEnum::CVC5,false));
+  TermTranslator tt(news);
+  smt::Term f = news->make_term("1.0", news->make_sort(REAL));
+  smt::Term ttf = tt.transfer_term(f, REAL);
+}
+
 // All tests are instantiated with non-generic solver,
 // as genreic solvers do not support term translation
 // currently.
@@ -340,5 +347,6 @@ INSTANTIATE_TEST_SUITE_P(
                          { TERMITER, CONSTARR, ARRAY_FUN_BOOLS })),
                      testing::ValuesIn(filter_non_generic_solver_configurations(
                          { TERMITER, CONSTARR, ARRAY_FUN_BOOLS }))));
+
 
 }  // namespace smt_tests

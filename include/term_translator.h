@@ -109,7 +109,8 @@ class TermTranslator
    * @return the infix-style representation
    */
   std::string infixize_rational(const std::string smtlib) const;
-
+  bool parse_rational(const std::string smtlib, std::string & nom, std::string & den, bool & negated) const;
+  
   /** identifies relevant casts to perform an operation
    *  assumes the operation is currently not well-sorted
    *  e.g. check_sortedness returns false

@@ -14,6 +14,7 @@
 **        symbols, which would throw an exception).
 **/
 
+#include <regex>
 #include <iterator>
 #include <sstream>
 #include <unordered_map>
@@ -247,8 +248,16 @@ Term TermTranslator::transfer_term(const Term & term)
           // allows us to transfer from a solver that doesn't alias sorts
           // to one that does alias sorts
           // the sort will be transferred again in value_from_smt2
-          cache[t] = value_from_smt2(
+          if (!t->get_op().is_null()){
+            assert(t->get_op() == Negate);
+            Term it = *t->begin();
+            it = value_from_smt2(
+              it->print_value_as(it->get_sort()->get_sort_kind()), it->get_sort());
+            cache[t] = solver->make_term(Negate, it);
+          } else {
+            cache[t] = value_from_smt2(
               t->print_value_as(t->get_sort()->get_sort_kind()), t->get_sort());
+          }
         }
       }
       else
@@ -264,25 +273,30 @@ Term TermTranslator::transfer_term(const Term & term)
           cached_children.push_back(cache.at(c));
         }
         assert(cached_children.size());
+        cache[t] = solver->make_term(t->get_op(), cached_children);
 
-        Op op = t->get_op();
-        if (!check_sortedness(op, cached_children))
-        {
-          /* NOTE: interesting behavior here
-             if transferring between two solvers that alias sorts
-             e.g. two different instances of BTOR
-             the sorted-ness check will still fail for something like
-             Ite(BV{1}, BV{8}, BV{8})
-             so we'll reach this point and cast
-             but the cast won't actually do anything for BTOR
-             in other words, check_sortedness is not guaranteed
-             to hold after casting */
-          cache[t] = cast_op(op, cached_children);
-        }
-        else
-        {
-          cache[t] = solver->make_term(t->get_op(), cached_children);
-        }
+        // The then branch below introduces bitvector terms even when the formula does not have them
+        // thus polluting the formulas, and forcing the solvers to use bv theory.
+        // removed this temporarily
+        //
+        // Op op = t->get_op();
+        // if (!check_sortedness(op, cached_children))
+        // {
+        //   /* NOTE: interesting behavior here
+        //      if transferring between two solvers that alias sorts
+        //      e.g. two different instances of BTOR
+        //      the sorted-ness check will still fail for something like
+        //      Ite(BV{1}, BV{8}, BV{8})
+        //      so we'll reach this point and cast
+        //      but the cast won't actually do anything for BTOR
+        //      in other words, check_sortedness is not guaranteed
+        //      to hold after casting */
+        //   cache[t] = cast_op(op, cached_children);
+        // }
+        // else
+        // {
+        //   cache[t] = solver->make_term(t->get_op(), cached_children);
+        // }
       }
     }
   }
@@ -299,6 +313,7 @@ Term TermTranslator::transfer_term(const Term & term, const SortKind sk)
   Term transferred_term = transfer_term(term);
   Sort transferred_sort = transferred_term->get_sort();
   SortKind transferred_sk = transferred_sort->get_sort_kind();
+
   if (transferred_sk == sk)
   {
     return transferred_term;
@@ -336,27 +351,55 @@ Term TermTranslator::transfer_term(const Term & term, const SortKind sk)
   }
 }
 
+bool TermTranslator::parse_rational(const std::string smtlib, std::string & nom, std::string & den, bool & negated) const {
+  int ind_of_up_start = smtlib.find_first_of("/");
+  negated = false;
+  if (ind_of_up_start == std::string::npos) {
+    nom = smtlib;
+    den = "";
+    return true;
+  }
+  ind_of_up_start += 2;
+  std::string query = smtlib.substr(ind_of_up_start, smtlib.size()-4);
+  std::regex r("(\\(?[- 0-9]+\\)?)\\s*(\\(?[- 0-9]+\\)?)");
+  std::smatch matches;
+  if (std::regex_match(query, matches, r)){
+    assert(matches.size() >= 3);
+    nom = matches[1].str();
+    den = matches[2].str();
+
+    int ind_of_up_start = nom.find_first_of("/");
+    if (ind_of_up_start != std::string::npos) {
+      nom = nom.substr(ind_of_up_start+2, nom.size()-4);
+      negated = !negated;
+    }
+    ind_of_up_start = den.find_first_of("/");
+    if (ind_of_up_start != std::string::npos) {
+      den = den.substr(ind_of_up_start+2, den.size()-4);
+      negated = !negated;
+    }
+  } else {
+    throw IncorrectUsageException("Cannot parse rational: " + smtlib);
+  }
+  return true;
+}
+
+
 std::string TermTranslator::infixize_rational(const std::string smtlib) const {
-  // smtlib: (/ up down)
-  // ind -- index
-  std::string op;
   int ind_of_up_start = smtlib.find_first_of("/");
   if (ind_of_up_start == std::string::npos) {
     return smtlib;
   }
   ind_of_up_start += 2;
-  op = "/";
-  int ind_of_up_end = smtlib.find_first_of(' ', ind_of_up_start);
-  assert(ind_of_up_end != std::string::npos);
-  ind_of_up_end -= 1;
-  int ind_of_down_start = ind_of_up_end + 2;
-  int ind_of_down_end = smtlib.find_first_of(')', ind_of_down_start);
-  assert(ind_of_down_end != std::string::npos);
-  ind_of_down_end -= 1;
-  std::string new_up = smtlib.substr(ind_of_up_start, ind_of_up_end - ind_of_up_start +1);
-  std::string new_down = smtlib.substr(ind_of_down_start, ind_of_down_end - ind_of_down_start +1);
-  std::string new_string = new_up + " " + op + " " + new_down;
-  return new_string;
+  std::string query = smtlib.substr(ind_of_up_start, smtlib.size()-4);
+  std::regex r("(\\(?[- 0-9]+\\)?)\\s*(\\(?[- 0-9]+\\)?)");
+  std::smatch matches;
+  if (std::regex_match(query, matches, r)){
+    assert(matches.size() >= 3);
+    return matches[1].str() + " / " + matches[2].str();
+  } else {
+    throw IncorrectUsageException("Cannot parse rational: " + smtlib);
+  }
 }
 
 Term TermTranslator::value_from_smt2(const std::string val,
@@ -417,8 +460,18 @@ Term TermTranslator::value_from_smt2(const std::string val,
     }
     else
     {
-      std::string mval = infixize_rational(val);
-      return solver->make_term(mval, sort);
+      std::string nom, den;
+      bool negated = false;
+      parse_rational(val, nom, den, negated);
+      Term newterm;
+      if (den == ""){
+        newterm = solver->make_term(val, sort);
+      } else {
+        newterm = solver->make_term(Div, solver->make_term(nom, sort), solver->make_term(den, sort));
+      }
+      if (negated){
+        return solver->make_term(Negate, newterm);
+      } else return newterm;
     }
   }
   // this check HAS to come after bit-vector check

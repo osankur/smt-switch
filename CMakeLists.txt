@@ -225,7 +225,7 @@ endif()
 
 # should we build the tests
 option (BUILD_TESTS
-  "Should we build the test suite" ON)
+  "Should we build the test suite" OFF)
 
 if (BUILD_TESTS)
   # build testing infrastructure

@@ -201,9 +201,9 @@ Op Cvc5Term::get_op() const
   cvc5::Kind cvc5_kind = cvc5_op.getKind();
 
   // special cases
-  if (cvc5_kind == cvc5::Kind::CONST_ARRAY)
+  if (cvc5_kind == cvc5::Kind::CONST_ARRAY || cvc5_kind == cvc5::Kind::CONST_RATIONAL)
   {
-    // constant array is a value in smt-switch
+    // constant array and const rationals are values in smt-switch
     return Op();
   }
 
