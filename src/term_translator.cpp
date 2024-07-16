@@ -244,6 +244,7 @@ Term TermTranslator::transfer_term(const Term & term)
         }
         else
         {
+
           // pass the original sort here
           // allows us to transfer from a solver that doesn't alias sorts
           // to one that does alias sorts
@@ -254,10 +255,11 @@ Term TermTranslator::transfer_term(const Term & term)
             it = value_from_smt2(
               it->print_value_as(it->get_sort()->get_sort_kind()), it->get_sort());
             cache[t] = solver->make_term(Negate, it);
-          } else {
-            cache[t] = value_from_smt2(
-              t->print_value_as(t->get_sort()->get_sort_kind()), t->get_sort());
+        } else {
+            std::string val = t->print_value_as(t->get_sort()->get_sort_kind());
+            cache[t] = value_from_smt2(val, t->get_sort());
           }
+  
         }
       }
       else
@@ -311,6 +313,7 @@ Term TermTranslator::transfer_term(const Term & term)
 Term TermTranslator::transfer_term(const Term & term, const SortKind sk)
 {
   Term transferred_term = transfer_term(term);
+
   Sort transferred_sort = transferred_term->get_sort();
   SortKind transferred_sk = transferred_sort->get_sort_kind();
 
@@ -464,9 +467,13 @@ Term TermTranslator::value_from_smt2(const std::string val,
       bool negated = false;
       parse_rational(val, nom, den, negated);
       Term newterm;
-      if (den == ""){
+      if (den == "") {
         newterm = solver->make_term(val, sort);
       } else {
+        // std::cout << "A " << solver->get_solver_enum() << " with " << val << "\n";
+        smt::Term a = solver->make_term(nom, sort);
+        // std::cout << "B" << "\n";
+        smt::Term b = solver->make_term(den, sort);
         newterm = solver->make_term(Div, solver->make_term(nom, sort), solver->make_term(den, sort));
       }
       if (negated){

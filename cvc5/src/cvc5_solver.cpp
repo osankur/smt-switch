@@ -203,14 +203,29 @@ Term Cvc5Solver::make_term(std::string val,
       {
         throw IncorrectUsageException(
             "Can't use non-decimal base for reals and ints");
-      }
-      if (sk == INT)
-      {
-        c = solver.mkInteger(val);
-      }
-      else
-      {
-        c = solver.mkReal(val);
+      } else {
+        bool negate = false;
+        // if val is of the form (-.*), then remove the negation and set the negate flag
+        if (val.substr(0, 2) == "(-")
+        {
+          val = val.substr(3, val.length() - 4);
+          negate = true;
+        }
+
+        if (sk == INT)
+        {
+          c = solver.mkInteger(val);
+        }
+        else
+        {
+          c = solver.mkReal(val);
+        }
+
+        if (negate){
+          std::vector<::cvc5::Term> cterms;
+          cterms.push_back(c);
+          c = solver.mkTerm(::cvc5::NEG, cterms);
+        }
       }
     }
     else if (sk == BV)

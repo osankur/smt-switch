@@ -317,6 +317,15 @@ TEST(RationalSelfTests, RationalConst){
   smt::Term ttf = tt.transfer_term(f, REAL);
 }
 
+// TEST(RationalSelfTests, NegativeRationals){
+//   smt::SmtSolver news = create_solver(SolverConfiguration(smt::SolverEnum::CVC5,false));
+//   TermTranslator tt(news);
+
+//   smt::Term f = news->make_term(Div, news->make_term(3), news->make_term(4));
+//   smt::Term ttf = tt.transfer_term(f, REAL);
+//   std::cout  << "transferred term: " << ttf << "\n";
+// }
+
 // All tests are instantiated with non-generic solver,
 // as genreic solvers do not support term translation
 // currently.

@@ -11,7 +11,12 @@ This function was unable to parse rationals with negative nominator or denominat
 Because not all solvers have the unary minus operator (e.g. msat), a new function was added: `TermTranslator::parse_rational`.
 This parses nominator and the denominator as nonnegative numbers and returns whether the value must be negated.
 
-## Bug Fix: TermTranslator::transfer_term 
+## Bug Fix: TermTranslator::value_from_smt2
+This function could not parse negative rational values such as "(/ (- 3) 5)" due to 
+`Term Cvc5Solver::make_term(std::string val, const Sort & sort, uint64_t base) const` not being able to handle negative values.
+The latter function was modified to bring support for parsing negative integers.
+
+## Bug Workaround: TermTranslator::transfer_term 
 This function always introduced bitvector terms even if the given formula does not have these.
 This was due to the following part:
 
@@ -30,7 +35,11 @@ This was due to the following part:
         //   cache[t] = cast_op(op, cached_children);
 ```
 
-This part is commented, which means that the case described in these comments will probably fail.
+This part is commented, which means that the case described in these comments might fail.
+
+Some tests in test-term-translator involving bv theories fail currently due to the above modification.
+The present version of the library must not be used with bv theories.
+
 However, for formulas purely in LRA or LIA, this no longer introduces bitvectors.
 
 The following part was also modified:
@@ -56,7 +65,6 @@ In the function `Op Cvc5Term::get_op() const`, I added:
   ```
 This issue was already handled in this way for const array.
 
-## Bug Fix: MSAT not being able to make terms out of negative numbers
-`MsatSolver::make_term` was updated so that a given string "(- 5)" can be parsed as the corresponding term built.
-This may not be a bug but Pono was calling this function with negative values.
+## Bug Fix: MSAT and CVC5 not being able to make terms out of negative numbers
+`MsatSolver::make_term` and `Term Cvc5Solver::make_term(std::string val, const Sort & sort, uint64_t base) const` were updated so that a given string "(- 5)" can be parsed as the corresponding term built. 
 
